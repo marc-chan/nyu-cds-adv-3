@@ -3,13 +3,13 @@ import os
 
 if __name__ == "__main__":
     reps = 3
-    optimized = "nbody_3"
+    optimized = "nbody_4"
 
-    setup = "from nbody import nbody"
+    setup = "from nbody import nbody, BODIES"
     pretime = timeit("nbody(100, 'sun', 20000)", setup=setup, number=reps)/reps
 
     setup = "from {} import nbody, BODIES".format(optimized)
-    posttime = timeit("nbody(100, 'sun', 20000, BODIES)", setup=setup, number=reps)/reps
+    posttime = timeit("nbody(100, 'sun', 20000)", setup=setup, number=reps)/reps
 
     print("Results of {} vs nbody, average of {} runs:".format(optimized, reps))
     print("Pre-optimized runtime: {:.2f}s".format(pretime))

@@ -1,6 +1,6 @@
 """
     N-body simulation.
-    Optimization 3: Use local rather than global variables
+    Optimization 4: Reduce loop overhead via data aggregation
 """
 
 PI = 3.14159265358979323
@@ -65,29 +65,29 @@ def update_rs(r, dt, vx, vy, vz):
     r[1] += dt * vy
     r[2] += dt * vz
 
-def advance(BODIES, dt):
+def advance(dt, iterations):
     '''
         advance the system one timestep
     '''
-    seenit = []
-    for body1 in BODIES.keys():
-        for body2 in BODIES.keys():
-            if (body1 != body2) and not (body2 in seenit):
-                ([x1, y1, z1], v1, m1) = BODIES[body1]
-                ([x2, y2, z2], v2, m2) = BODIES[body2]
-                (dx, dy, dz) = compute_deltas(x1, x2, y1, y2, z1, z2)
-                update_vs(v1, v2, dt, dx, dy, dz, m1, m2)
-                seenit.append(body1)
+    for _ in range(iterations):
+        seenit = []
+        for body1 in BODIES.keys():
+            for body2 in BODIES.keys():
+                if (body1 != body2) and not (body2 in seenit):
+                    ([x1, y1, z1], v1, m1) = BODIES[body1]
+                    ([x2, y2, z2], v2, m2) = BODIES[body2]
+                    (dx, dy, dz) = compute_deltas(x1, x2, y1, y2, z1, z2)
+                    update_vs(v1, v2, dt, dx, dy, dz, m1, m2)
+                    seenit.append(body1)
 
-    for body in BODIES.keys():
-        (r, [vx, vy, vz], m) = BODIES[body]
-        update_rs(r, dt, vx, vy, vz)
-    return BODIES
+        for body in BODIES.keys():
+            (r, [vx, vy, vz], m) = BODIES[body]
+            update_rs(r, dt, vx, vy, vz)
 
 def compute_energy(m1, m2, dx, dy, dz):
     return (m1 * m2) / ((dx * dx + dy * dy + dz * dz) ** 0.5)
 
-def report_energy(BODIES, e=0.0):
+def report_energy(e=0.0):
     '''
         compute the energy and return it so that it can be printed
     '''
@@ -107,7 +107,7 @@ def report_energy(BODIES, e=0.0):
 
     return e
 
-def offset_momentum(BODIES, ref, px=0.0, py=0.0, pz=0.0):
+def offset_momentum(ref, px=0.0, py=0.0, pz=0.0):
     '''
         ref is the body in the center of the system
         offset values from this reference
@@ -118,30 +118,26 @@ def offset_momentum(BODIES, ref, px=0.0, py=0.0, pz=0.0):
         py -= vy * m
         pz -= vz * m
 
-    (r, v, m) = BODIES[ref]
+    (r, v, m) = ref
     v[0] = px / m
     v[1] = py / m
     v[2] = pz / m
-    return BODIES
 
 
-def nbody(loops, reference, iterations, bodies):
+def nbody(loops, reference, iterations):
     '''
         nbody simulation
         loops - number of loops to run
         reference - body at center of system
         iterations - number of timesteps to advance
-        bodies - reference data of bodies
     '''
-    BODIES = bodies.copy()
     # Set up global state
-    BODIES = offset_momentum(BODIES, reference)
+    offset_momentum(BODIES[reference])
 
     for _ in range(loops):
-        report_energy(BODIES)
-        for _ in range(iterations):
-            BODIES = advance(BODIES, 0.01)
-        print(report_energy(BODIES))
+        # report_energy()
+        advance(0.01,iterations)
+        print(report_energy())
 
 if __name__ == '__main__':
-    nbody(100, 'sun', 20000, BODIES)
+    nbody(100, 'sun', 20000)
