@@ -1,0 +1,4 @@
+Results of nbody_3 vs nbody, average of 3 runs:
+Pre-optimized runtime: 86.59s
+Post-optimized runtime: 83.88s
+Relative speedup: 1.03x
