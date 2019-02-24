@@ -1,72 +1,54 @@
 """
-    N-body simulation.
-    Optimization 3: Use local rather than global variables
-    Results of nbody_3 vs nbody, average of 3 runs:
-        Pre-optimized runtime: 90.43s
-        Post-optimized runtime: 89.55s
-        Relative speedup: 1.01x
+    Modules for N-body simulation.
+    Optimizations:
+        1. All optimizations from nbody 1-4
+        2. Run using cython
 """
+from itertools import combinations
 
-def compute_deltas(x1, x2, y1, y2, z1, z2):
-    return (x1-x2, y1-y2, z1-z2)
-
-def compute_b(m, dt, dx, dy, dz):
-    mag = compute_mag(dt, dx, dy, dz)
-    return m * mag
-
-def compute_mag(dt, dx, dy, dz):
-    return dt * ((dx * dx + dy * dy + dz * dz) ** (-1.5))
-
-def update_vs(v1, v2, dt, dx, dy, dz, m1, m2):
-    v1[0] -= dx * compute_b(m2, dt, dx, dy, dz)
-    v1[1] -= dy * compute_b(m2, dt, dx, dy, dz)
-    v1[2] -= dz * compute_b(m2, dt, dx, dy, dz)
-    v2[0] += dx * compute_b(m1, dt, dx, dy, dz)
-    v2[1] += dy * compute_b(m1, dt, dx, dy, dz)
-    v2[2] += dz * compute_b(m1, dt, dx, dy, dz)
-
-def update_rs(r, dt, vx, vy, vz):
-    r[0] += dt * vx
-    r[1] += dt * vy
-    r[2] += dt * vz
-
-def advance(BODIES, dt):
+def advance(BODIES, candidates, dt, iterations):
     '''
         advance the system one timestep
     '''
-    seenit = []
-    for body1 in BODIES.keys():
-        for body2 in BODIES.keys():
-            if (body1 != body2) and not (body2 in seenit):
-                ([x1, y1, z1], v1, m1) = BODIES[body1]
-                ([x2, y2, z2], v2, m2) = BODIES[body2]
-                (dx, dy, dz) = compute_deltas(x1, x2, y1, y2, z1, z2)
-                update_vs(v1, v2, dt, dx, dy, dz, m1, m2)
-                seenit.append(body1)
+    bodykeys = BODIES.keys()
+    for _ in range(iterations):
+        for (body1, body2) in candidates:
+            ([x1, y1, z1], v1, m1) = BODIES[body1]
+            ([x2, y2, z2], v2, m2) = BODIES[body2]
+            ## Compute deltas
+            (dx, dy, dz) = (x1-x2, y1-y2, z1-z2)
+            ## Compute mag
+            mag = dt * ((dx * dx + dy * dy + dz * dz) ** (-1.5))
+            ## Update vs
+            v1[0] -= dx * m2 * mag
+            v1[1] -= dy * m2 * mag
+            v1[2] -= dz * m2 * mag
+            v2[0] += dx * m1 * mag
+            v2[1] += dy * m1 * mag
+            v2[2] += dz * m1 * mag
 
-    for body in BODIES.keys():
-        (r, [vx, vy, vz], m) = BODIES[body]
-        update_rs(r, dt, vx, vy, vz)
+        for body in bodykeys:
+            (r, [vx, vy, vz], m) = BODIES[body]
+            ## Update rs
+            r[0] += dt * vx
+            r[1] += dt * vy
+            r[2] += dt * vz
     return BODIES
 
-def compute_energy(m1, m2, dx, dy, dz):
-    return (m1 * m2) / ((dx * dx + dy * dy + dz * dz) ** 0.5)
-
-def report_energy(BODIES, e=0.0):
+def report_energy(BODIES, candidates, e=0.0):
     '''
         compute the energy and return it so that it can be printed
     '''
-    seenit = []
-    for body1 in BODIES.keys():
-        for body2 in BODIES.keys():
-            if (body1 != body2) and not (body2 in seenit):
-                ((x1, y1, z1), v1, m1) = BODIES[body1]
-                ((x2, y2, z2), v2, m2) = BODIES[body2]
-                (dx, dy, dz) = compute_deltas(x1, x2, y1, y2, z1, z2)
-                e -= compute_energy(m1, m2, dx, dy, dz)
-                seenit.append(body1)
+    bodykeys = BODIES.keys()
+    for (body1, body2) in candidates:
+        ((x1, y1, z1), v1, m1) = BODIES[body1]
+        ((x2, y2, z2), v2, m2) = BODIES[body2]
+        ## Compute deltas
+        (dx, dy, dz) = (x1-x2, y1-y2, z1-z2)
+        ## Compute energy
+        e -= (m1 * m2) / ((dx * dx + dy * dy + dz * dz) ** 0.5)
 
-    for body in BODIES.keys():
+    for body in bodykeys:
         (r, [vx, vy, vz], m) = BODIES[body]
         e += m * (vx * vx + vy * vy + vz * vz) / 2.
 
@@ -96,13 +78,13 @@ def nbody(loops, reference, iterations):
         loops - number of loops to run
         reference - body at center of system
         iterations - number of timesteps to advance
-        bodies - reference data of bodies
     '''
-    PI = 3.14159265358979323
-    SOLAR_MASS = 4 * PI * PI
-    DAYS_PER_YEAR = 365.24
+    import pyximport; pyximport.install()
+    cdef float PI = 3.14159265358979323
+    cdef float SOLAR_MASS = 4 * PI * PI
+    cdef float DAYS_PER_YEAR = 365.24
 
-    BODIES = {
+    cdef dict BODIES = {
         'sun': ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0], SOLAR_MASS),
 
         'jupiter': ([4.84143144246472090e+00,
@@ -138,13 +120,13 @@ def nbody(loops, reference, iterations):
                     5.15138902046611451e-05 * SOLAR_MASS)}
 
     # Set up global state
-    offset_momentum(BODIES, reference)
+    BODIES = offset_momentum(BODIES, reference)
+    bodykeys = list(BODIES.keys())
+    candidates = list(combinations(bodykeys,2))
 
     for _ in range(loops):
-        report_energy(BODIES)
-        for _ in range(iterations):
-            advance(BODIES, 0.01)
-        print(report_energy(BODIES))
+        BODIES = advance(BODIES, candidates, 0.01, iterations)
+        print(report_energy(BODIES, candidates))
 
 if __name__ == '__main__':
-    nbody(100, 'sun', 20000)
+    pass

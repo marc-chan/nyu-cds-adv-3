@@ -1,6 +1,10 @@
 """
     N-body simulation.
     Optimization 4: Reduce loop overhead via data aggregation
+    Results of nbody_4 vs nbody, average of 3 runs:
+        Pre-optimized runtime: 85.50s
+        Post-optimized runtime: 83.81s
+        Relative speedup: 1.02x
 """
 
 PI = 3.14159265358979323

@@ -2,10 +2,13 @@
     N-body simulation.
     Optimization 1: Reduce function call overhead
     Considerations:
-        1. Combine / remove functions that are called only once /trivial within core logic, \
-            keep functions that are called multiple times for readability
+        1. Combine / remove functions that are called within core logic
         2. Improve readability of combined functions by inserting comment lines at \
             relevant sections
+    Results of nbody_1 vs nbody, average of 3 runs:
+        Pre-optimized runtime: 99.10s
+        Post-optimized runtime: 38.48s
+        Relative speedup: 2.58x
 """
 
 PI = 3.14159265358979323
@@ -47,13 +50,6 @@ BODIES = {
                  -9.51592254519715870e-05 * DAYS_PER_YEAR],
                 5.15138902046611451e-05 * SOLAR_MASS)}
 
-def compute_b(m, dt, dx, dy, dz):
-    ## Compute mag
-    mag = dt * ((dx * dx + dy * dy + dz * dz) ** (-1.5))
-    ## Compute b
-    b = m * mag
-    return b
-
 def advance(dt):
     '''
         advance the system one timestep
@@ -67,14 +63,15 @@ def advance(dt):
                 ([x2, y2, z2], v2, m2) = BODIES[body2]
                 ## Compute deltas
                 (dx, dy, dz) = (x1-x2, y1-y2, z1-z2)
-
+                ## Compute mag
+                mag = dt * ((dx * dx + dy * dy + dz * dz) ** (-1.5))
                 ## Update vs
-                v1[0] -= dx * compute_b(m2, dt, dx, dy, dz)
-                v1[1] -= dy * compute_b(m2, dt, dx, dy, dz)
-                v1[2] -= dz * compute_b(m2, dt, dx, dy, dz)
-                v2[0] += dx * compute_b(m1, dt, dx, dy, dz)
-                v2[1] += dy * compute_b(m1, dt, dx, dy, dz)
-                v2[2] += dz * compute_b(m1, dt, dx, dy, dz)
+                v1[0] -= dx * m2 * mag
+                v1[1] -= dy * m2 * mag
+                v1[2] -= dz * m2 * mag
+                v2[0] += dx * m1 * mag
+                v2[1] += dy * m1 * mag
+                v2[2] += dz * m1 * mag
                 seenit.append(body1)
 
     for body in BODIES.keys():
@@ -134,7 +131,7 @@ def nbody(loops, reference, iterations):
     offset_momentum(BODIES[reference])
 
     for _ in range(loops):
-        report_energy()
+        # report_energy()
         for _ in range(iterations):
             advance(0.01)
         print(report_energy())

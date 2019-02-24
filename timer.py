@@ -5,10 +5,10 @@ if __name__ == "__main__":
     reps = 3
     optimized = "nbody_4"
 
-    setup = "from nbody import nbody, BODIES"
+    setup = "from nbody import nbody"
     pretime = timeit("nbody(100, 'sun', 20000)", setup=setup, number=reps)/reps
 
-    setup = "from {} import nbody, BODIES".format(optimized)
+    setup = "from {} import nbody".format(optimized)
     posttime = timeit("nbody(100, 'sun', 20000)", setup=setup, number=reps)/reps
 
     print("Results of {} vs nbody, average of {} runs:".format(optimized, reps))
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     print("Post-optimized runtime: {:.2f}s".format(posttime))
     print("Relative speedup: {:.2f}x".format(pretime/posttime))
 
-    with open("{}_results.txt".format(optimized),"w") as f:
+    with open("results/{}_results.txt".format(optimized),"w") as f:
         f.write("Results of {} vs nbody, average of {} runs:".format(optimized, reps))
         f.write("\n")
         f.write("Pre-optimized runtime: {:.2f}s".format(pretime))
