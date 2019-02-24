@@ -3,7 +3,7 @@ import os
 
 if __name__ == "__main__":
     reps = 3
-    optimized = "nbody_1"
+    optimized = "nbody_2"
 
     setup = "from nbody import nbody"
     pretime = timeit("nbody(100, 'sun', 20000)", setup=setup, number=reps)/reps
